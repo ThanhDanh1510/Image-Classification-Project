@@ -1,0 +1,14 @@
+README.md
+pyproject.toml
+src/image_classification/__init__.py
+src/image_classification/config.py
+src/image_classification/data.py
+src/image_classification/evaluate.py
+src/image_classification/inference.py
+src/image_classification/model.py
+src/image_classification/training.py
+src/image_classification_trashnet.egg-info/PKG-INFO
+src/image_classification_trashnet.egg-info/SOURCES.txt
+src/image_classification_trashnet.egg-info/dependency_links.txt
+src/image_classification_trashnet.egg-info/requires.txt
+src/image_classification_trashnet.egg-info/top_level.txt

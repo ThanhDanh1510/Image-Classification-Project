@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "image-classification-trashnet"
+version = "0.1.0"
+description = "Image classification project refactored from notebook with DVC and Streamlit."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "matplotlib>=3.8",
+  "numpy>=1.26",
+  "pandas>=2.2",
+  "Pillow>=10.0",
+  "PyYAML>=6.0",
+  "requests>=2.32",
+  "scikit-learn>=1.5",
+  "streamlit>=1.44",
+  "torch>=2.4",
+  "torchvision>=0.19",
+]
+
+[project.optional-dependencies]
+dev = [
+  "dvc>=3.50",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -1,0 +1,42 @@
+stages:
+  prepare:
+    cmd: python -m scripts.prepare_data --params params.yaml
+    deps:
+      - params.yaml
+      - scripts/prepare_data.py
+      - src/image_classification/data.py
+      - src/image_classification/config.py
+    outs:
+      - data/processed
+  train:
+    cmd: python -m scripts.train --params params.yaml
+    deps:
+      - params.yaml
+      - data/processed
+      - src/image_classification/config.py
+      - src/image_classification/data.py
+      - src/image_classification/model.py
+      - src/image_classification/training.py
+      - scripts/train.py
+    outs:
+      - artifacts/model/best_model.pt
+      - artifacts/model/class_names.json
+      - artifacts/model/training_history.json
+      - artifacts/model/training_summary.json
+  evaluate:
+    cmd: python -m scripts.evaluate --params params.yaml
+    deps:
+      - params.yaml
+      - data/processed
+      - artifacts/model/best_model.pt
+      - artifacts/model/class_names.json
+      - src/image_classification/config.py
+      - src/image_classification/data.py
+      - src/image_classification/model.py
+      - src/image_classification/evaluate.py
+      - scripts/evaluate.py
+    outs:
+      - artifacts/reports/accuracy_per_class.png
+      - artifacts/reports/confusion_matrix.png
+    metrics:
+      - artifacts/reports/metrics.json

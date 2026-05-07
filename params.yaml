@@ -1,0 +1,28 @@
+seed: 42
+
+data:
+  source_url: "https://github.com/garythung/trashnet/archive/refs/heads/master.zip"
+  download_dir: "data/external"
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+  image_size: 224
+  train_split: 0.6
+  val_split: 0.2
+  test_split: 0.2
+  batch_size: 64
+  eval_batch_multiplier: 2
+  num_workers: 4
+
+train:
+  architecture: "resnet50"
+  pretrained: true
+  learning_rate: 0.00005
+  epochs: 50
+  patience: 3
+  device: "auto"
+  amp: true
+  multi_gpu: true
+
+artifacts:
+  model_dir: "artifacts/model"
+  report_dir: "artifacts/reports"

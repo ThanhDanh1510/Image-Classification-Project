@@ -1,0 +1,13 @@
+matplotlib>=3.8
+numpy>=1.26
+pandas>=2.2
+Pillow>=10.0
+PyYAML>=6.0
+requests>=2.32
+scikit-learn>=1.5
+streamlit>=1.44
+torch>=2.4
+torchvision>=0.19
+
+[dev]
+dvc>=3.50
