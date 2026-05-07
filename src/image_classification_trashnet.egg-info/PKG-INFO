@@ -1,0 +1,148 @@
+Metadata-Version: 2.4
+Name: image-classification-trashnet
+Version: 0.1.0
+Summary: Image classification project refactored from notebook with DVC and Streamlit.
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: matplotlib>=3.8
+Requires-Dist: numpy>=1.26
+Requires-Dist: pandas>=2.2
+Requires-Dist: Pillow>=10.0
+Requires-Dist: PyYAML>=6.0
+Requires-Dist: requests>=2.32
+Requires-Dist: scikit-learn>=1.5
+Requires-Dist: streamlit>=1.44
+Requires-Dist: torch>=2.4
+Requires-Dist: torchvision>=0.19
+Provides-Extra: dev
+Requires-Dist: dvc>=3.50; extra == "dev"
+
+# Image Classification Project
+
+Du an nay duoc tach tu notebook thanh cau truc Python chuan, co DVC de quan ly pipeline du lieu/huan luyen/danh gia va Streamlit de demo model.
+
+## Cau truc
+
+```text
+.
+|-- data/
+|   |-- external/
+|   |-- raw/
+|   `-- processed/
+|-- artifacts/
+|   |-- model/
+|   `-- reports/
+|-- notebook/
+|   `-- Untitled20.ipynb
+|-- scripts/
+|   |-- prepare_data.py
+|   |-- train.py
+|   `-- evaluate.py
+|-- src/image_classification/
+|   |-- config.py
+|   |-- data.py
+|   |-- evaluate.py
+|   |-- inference.py
+|   |-- model.py
+|   `-- training.py
+|-- app/
+|   `-- streamlit_app.py
+|-- dvc.yaml
+|-- params.yaml
+`-- pyproject.toml
+```
+
+## Cai dat
+
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install -e .[dev]
+```
+
+Neu ban chua khoi tao DVC trong repo, chay them:
+
+```powershell
+dvc init
+git add .dvc .dvcignore
+git commit -m "Initialize DVC"
+```
+
+## Chay pipeline bang DVC
+
+1. Cap nhat tham so trong `params.yaml` neu can.
+2. Tai va chuan hoa du lieu:
+
+```powershell
+dvc repro prepare
+```
+
+3. Huan luyen model:
+
+```powershell
+dvc repro train
+```
+
+4. Danh gia model:
+
+```powershell
+dvc repro evaluate
+```
+
+Hoac chay toan bo:
+
+```powershell
+dvc repro
+```
+
+Khi thay doi `params.yaml` hoac code trong `src/`, DVC se tu dong chi chay lai stage can thiet.
+
+## Theo doi artifact va cache
+
+- `data/processed` duoc sinh ra boi stage `prepare`
+- `artifacts/model/best_model.pt` la checkpoint tot nhat
+- `artifacts/reports/metrics.json` chua metric danh gia
+
+Ban co the xem DAG:
+
+```powershell
+dvc dag
+```
+
+Va so sanh thay doi metric:
+
+```powershell
+dvc metrics show
+git checkout <commit-cu>
+dvc metrics diff <commit-moi>
+```
+
+## Demo voi Streamlit
+
+Sau khi da train xong:
+
+```powershell
+streamlit run app/streamlit_app.py
+```
+
+App se load:
+
+- `artifacts/model/best_model.pt`
+- `artifacts/model/class_names.json`
+
+Ban upload anh, app se resize ve dung kich thuoc va hien thi top prediction.
+
+## Mapping tu notebook cu
+
+- Phan clone/giai nen dataset -> `scripts/prepare_data.py`
+- Phan DataLoader/transform -> `src/image_classification/data.py`
+- Phan transfer learning ResNet50 -> `src/image_classification/model.py`
+- Phan train loop -> `src/image_classification/training.py`
+- Phan evaluate/ve confusion matrix -> `src/image_classification/evaluate.py`
+- Phan demo -> `app/streamlit_app.py`
+
+## Ghi chu
+
+- Notebook goc van duoc giu de doi chieu.
+- Pipeline mac dinh dung transfer learning ResNet50 vi day la huong on dinh va phu hop hon cho project image classification thuc te.
