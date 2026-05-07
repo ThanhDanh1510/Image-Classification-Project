@@ -1,18 +1,31 @@
-# Image Classification Project
+# TrashNet Image Classification
 
-Du an nay duoc tach tu `notebook/final_notebook.ipynb` thanh cau truc Python chuan, co DVC de quan ly pipeline du lieu/huan luyen/danh gia va Streamlit de demo model.
+## Overview
 
-## Cau truc
+This repository implements a TrashNet image-classification workflow using:
+
+- `ResNet50` pretrained on ImageNet
+- separate train and evaluation transforms
+- ImageNet normalization
+- train/validation/test split of `60/20/20`
+- mixed precision training when CUDA is available
+- early stopping on validation loss
+- DVC-managed data, training, and evaluation stages
+- Streamlit-based inference demo
+
+## Repository Structure
 
 ```text
 .
+|-- app/
+|   `-- streamlit_app.py
+|-- artifacts/
+|   |-- model/
+|   `-- reports/
 |-- data/
 |   |-- external/
 |   |-- raw/
 |   `-- processed/
-|-- artifacts/
-|   |-- model/
-|   `-- reports/
 |-- notebook/
 |   `-- final_notebook.ipynb
 |-- scripts/
@@ -26,105 +39,219 @@ Du an nay duoc tach tu `notebook/final_notebook.ipynb` thanh cau truc Python chu
 |   |-- inference.py
 |   |-- model.py
 |   `-- training.py
-|-- app/
-|   `-- streamlit_app.py
 |-- dvc.yaml
 |-- params.yaml
 `-- pyproject.toml
 ```
 
-## Cai dat
+## Quick Start
 
 ```powershell
 python -m venv .venv
-.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-pip install -e .[dev]
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -e .[dev]
+.\.venv\Scripts\dvc.exe repro
+.\.venv\Scripts\streamlit.exe run app\streamlit_app.py
 ```
 
-Neu ban chua khoi tao DVC trong repo, chay them:
+## Environment Setup
+
+### 1. Create a virtual environment
 
 ```powershell
-dvc init
-git add .dvc .dvcignore
-git commit -m "Initialize DVC"
+python -m venv .venv
 ```
 
-## Chay pipeline bang DVC
+### 2. Activate it on Windows PowerShell
 
-1. Cap nhat tham so trong `params.yaml` neu can.
-2. Tai va chuan hoa du lieu:
+If PowerShell blocks local scripts:
 
 ```powershell
-dvc repro prepare
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+. .\.venv\Scripts\Activate.ps1
 ```
 
-3. Huan luyen model:
+If you prefer not to activate the environment, use the executables directly from `.venv\Scripts\`.
+
+### 3. Install dependencies
 
 ```powershell
-dvc repro train
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -e .[dev]
 ```
 
-4. Danh gia model:
+## GPU Support
+
+The training code automatically uses CUDA when available and when the installed PyTorch build includes CUDA support.
+
+### Verify your PyTorch installation
 
 ```powershell
-dvc repro evaluate
+.\.venv\Scripts\python.exe -c "import torch; print(torch.__version__); print(torch.cuda.is_available())"
 ```
 
-Hoac chay toan bo:
+If you see a version ending in `+cpu`, or `torch.cuda.is_available()` returns `False`, your environment is running CPU-only PyTorch.
+
+### Install a CUDA-enabled PyTorch build
 
 ```powershell
-dvc repro
+.\.venv\Scripts\python.exe -m pip uninstall -y torch torchvision torchaudio
+.\.venv\Scripts\python.exe -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
 ```
 
-Khi thay doi `params.yaml` hoac code trong `src/`, DVC se tu dong chi chay lai stage can thiet.
-
-## Theo doi artifact va cache
-
-- `data/processed` duoc sinh ra boi stage `prepare`
-- `artifacts/model/best_model.pt` la `state_dict` cua ResNet50 theo logic notebook
-- `artifacts/model/training_history.json` luu lich su train voi cac key `Train Loss`, `Validation Loss`, `Validation Accuracy`
-- `artifacts/reports/metrics.json` chua overall accuracy va metric theo tung class
-- `artifacts/reports/accuracy_per_class.png` va `confusion_matrix.png` la cac report sinh tu stage evaluate
-
-Ban co the xem DAG:
+### Verify GPU detection
 
 ```powershell
-dvc dag
+.\.venv\Scripts\python.exe -c "import torch; print(torch.__version__); print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU only')"
 ```
 
-Va so sanh thay doi metric:
+During training, the project prints runtime diagnostics including:
+
+- PyTorch version
+- configured device
+- resolved device
+- CUDA availability
+- CUDA build
+- GPU count
+- AMP status
+
+If training falls back to CPU, the script prints a warning before the first epoch.
+
+## Configuration
+
+Project configuration is defined in [params.yaml](C:/Users/PC/Downloads/Image-Classification/params.yaml).
+
+Current defaults include:
+
+- `train_split: 0.6`
+- `val_split: 0.2`
+- `test_split: 0.2`
+- `batch_size: 64`
+- `epochs: 50`
+- `learning_rate: 0.00005`
+- `patience: 3`
+- `device: "auto"`
+- `amp: true`
+- `multi_gpu: true`
+
+To force GPU usage explicitly:
+
+```yaml
+train:
+  device: "cuda"
+```
+
+## DVC Workflow
+
+### Initialize DVC
+
+If the repository has not been initialized with DVC yet:
 
 ```powershell
-dvc metrics show
-git checkout <commit-cu>
-dvc metrics diff <commit-moi>
+.\.venv\Scripts\dvc.exe init
 ```
 
-## Demo voi Streamlit
+If `.dvc/` already exists, skip this step.
 
-Sau khi da train xong:
+### Run individual stages
+
+Prepare the dataset:
 
 ```powershell
-streamlit run app/streamlit_app.py
+.\.venv\Scripts\dvc.exe repro prepare
 ```
 
-App se load:
+Train the model:
+
+```powershell
+.\.venv\Scripts\dvc.exe repro train
+```
+
+Evaluate the model:
+
+```powershell
+.\.venv\Scripts\dvc.exe repro evaluate
+```
+
+### Run the full pipeline
+
+```powershell
+.\.venv\Scripts\dvc.exe repro
+```
+
+### Useful DVC commands
+
+View the pipeline graph:
+
+```powershell
+.\.venv\Scripts\dvc.exe dag
+```
+
+Inspect metrics:
+
+```powershell
+.\.venv\Scripts\dvc.exe metrics show
+```
+
+## Running Without DVC
+
+For direct script execution:
+
+```powershell
+.\.venv\Scripts\python.exe -m scripts.prepare_data --params params.yaml
+.\.venv\Scripts\python.exe -m scripts.train --params params.yaml
+.\.venv\Scripts\python.exe -m scripts.evaluate --params params.yaml
+```
+
+## Streamlit Demo
+
+After training has produced a checkpoint:
+
+```powershell
+.\.venv\Scripts\streamlit.exe run app\streamlit_app.py
+```
+
+The demo loads:
 
 - `artifacts/model/best_model.pt`
 - `artifacts/model/class_names.json`
 
-Ban upload anh, app se resize ve dung kich thuoc va hien thi top prediction cung cac score cua model.
+It then:
 
-## Mapping tu final_notebook
+- preprocesses the uploaded image
+- runs inference with the trained model
+- shows the top predicted class
+- shows ranked model scores for the top classes
 
-- Chuan bi TrashNet + tách transform train/eval + split `60/20/20` -> `src/image_classification/data.py`
-- ResNet50 pretrained + sigmoid output + DataParallel -> `src/image_classification/model.py`
-- AMP + early stopping + train history -> `src/image_classification/training.py`
-- Metric theo class + confusion matrix % + accuracy per class -> `src/image_classification/evaluate.py`
-- Suy luan va Streamlit demo -> `src/image_classification/inference.py`, `app/streamlit_app.py`
+## Generated Artifacts
 
-## Ghi chu
+After training and evaluation, the main outputs are:
 
-- Logic huan luyen trong codebase duoc dong bo theo `final_notebook.ipynb`.
-- Tren Windows, DataLoader trong codebase tu dong dung `num_workers=0` de tranh loi/treo khi chay local.
+- `artifacts/model/best_model.pt`
+- `artifacts/model/class_names.json`
+- `artifacts/model/training_history.json`
+- `artifacts/model/training_summary.json`
+- `artifacts/reports/metrics.json`
+- `artifacts/reports/accuracy_per_class.png`
+- `artifacts/reports/confusion_matrix.png`
+
+## Platform Notes
+
+### Windows
+
+- The codebase forces `num_workers=0` on Windows to avoid common local `DataLoader` hangs.
+- If PowerShell blocks activation scripts, use `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`.
+- If DVC reports stale lock warnings after an interrupted run, rerunning `dvc repro train` is usually sufficient.
+
+### Colab and Kaggle
+
+The notebook version is environment-aware and supports both Colab and Kaggle paths. The Python codebase is intended primarily for local and scripted execution, with DVC handling the reproducible workflow.
+
+## Mapping From Notebook to Codebase
+
+- dataset bootstrap, transforms, splits, and loaders: [src/image_classification/data.py](C:/Users/PC/Downloads/Image-Classification/src/image_classification/data.py)
+- model definition and training hooks: [src/image_classification/model.py](C:/Users/PC/Downloads/Image-Classification/src/image_classification/model.py)
+- early stopping, AMP, and training loop: [src/image_classification/training.py](C:/Users/PC/Downloads/Image-Classification/src/image_classification/training.py)
+- evaluation reports and metrics: [src/image_classification/evaluate.py](C:/Users/PC/Downloads/Image-Classification/src/image_classification/evaluate.py)
+- inference and demo app: [src/image_classification/inference.py](C:/Users/PC/Downloads/Image-Classification/src/image_classification/inference.py), [app/streamlit_app.py](C:/Users/PC/Downloads/Image-Classification/app/streamlit_app.py)
+
