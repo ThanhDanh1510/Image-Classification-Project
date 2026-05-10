@@ -39,8 +39,8 @@ stages:
       size: 551
     - path: scripts/train.py
       hash: md5
-      md5: f5404fc53080e485e6d90b50e326c55d
-      size: 1058
+      md5: 96cdc4457e28153b8b7b25f45c2b95f6
+      size: 1147
     - path: src/image_classification/config.py
       hash: md5
       md5: c797d26997430597311c6bb5e4964207
@@ -55,12 +55,12 @@ stages:
       size: 2883
     - path: src/image_classification/training.py
       hash: md5
-      md5: 5a48a0b20c28603ec05fb21c44a2a185
-      size: 7556
+      md5: 53e9f4052de1d6500d10b51ea5679b2f
+      size: 8924
     outs:
     - path: artifacts/model/best_model.pt
       hash: md5
-      md5: 875909da701cd8042dd6ea48ae3968fe
+      md5: a7d04f6c806aac0971173e4a97fca040
       size: 94400273
     - path: artifacts/model/class_names.json
       hash: md5
@@ -68,18 +68,18 @@ stages:
       size: 81
     - path: artifacts/model/training_history.json
       hash: md5
-      md5: 06c911a87928f17764a1fe97608fd79b
-      size: 2946
+      md5: 7685b6dd86254141834db0e45ad1f3f8
+      size: 5160
     - path: artifacts/model/training_summary.json
       hash: md5
-      md5: 495c6eed81d98cef13021e8abcbe4a15
-      size: 165
+      md5: 51a93844c096d6102eba3d35d3f6f473
+      size: 214
   evaluate:
     cmd: python -m scripts.evaluate --params params.yaml
     deps:
     - path: artifacts/model/best_model.pt
       hash: md5
-      md5: 875909da701cd8042dd6ea48ae3968fe
+      md5: a7d04f6c806aac0971173e4a97fca040
       size: 94400273
     - path: artifacts/model/class_names.json
       hash: md5
@@ -96,8 +96,8 @@ stages:
       size: 551
     - path: scripts/evaluate.py
       hash: md5
-      md5: ef4bf003472c21a7df309f490202358f
-      size: 805
+      md5: f43d520b1d7e93ef9b42d621cd046e6f
+      size: 881
     - path: src/image_classification/config.py
       hash: md5
       md5: c797d26997430597311c6bb5e4964207
@@ -108,8 +108,8 @@ stages:
       size: 6699
     - path: src/image_classification/evaluate.py
       hash: md5
-      md5: 33d2f5121002c870a3335d70a027cdce
-      size: 3483
+      md5: e638f668f3639c45d15fb45e2df58443
+      size: 3842
     - path: src/image_classification/model.py
       hash: md5
       md5: 99172a3bbdaaa8d499ab11741418684b
@@ -117,13 +117,13 @@ stages:
     outs:
     - path: artifacts/reports/accuracy_per_class.png
       hash: md5
-      md5: 8d13c642604ee50704bcf1677ce45772
-      size: 36197
+      md5: 7d0523fbc88ffb5fad7f622c163c8d88
+      size: 36178
     - path: artifacts/reports/confusion_matrix.png
       hash: md5
-      md5: c075e60db26a531a878cb096380dc4c2
-      size: 57142
+      md5: 5551f7323fb054f903c3352f7b75a41e
+      size: 57053
     - path: artifacts/reports/metrics.json
       hash: md5
-      md5: 09415bba1eb6198f8c28a4cbf6681f56
-      size: 1089
+      md5: 58f5a2006b0feb6c1d54eee6915284b6
+      size: 1169

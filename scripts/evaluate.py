@@ -22,7 +22,8 @@ def main() -> None:
     config = load_config(args.params)
     loaders = build_dataloaders(config)
     metrics = evaluate_model(config, loaders.val_loader, loaders.classes)
-    print(f"Evaluation accuracy: {metrics['overall_accuracy']:.2f}%")
+    print(f"Evaluation top-1 accuracy: {metrics['top1_accuracy']:.2f}%")
+    print(f"Evaluation top-5 accuracy: {metrics['top5_accuracy']:.2f}%")
 
 
 if __name__ == "__main__":

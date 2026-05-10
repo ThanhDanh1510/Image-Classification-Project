@@ -25,7 +25,8 @@ def main() -> None:
         print("WARNING: Training is not using CUDA. Expect slow training on CPU.")
     loaders = build_dataloaders(config)
     result = train_model(config, loaders.train_loader, loaders.val_loader, loaders.classes)
-    print(f"Best validation accuracy: {result.best_val_acc:.2f}%")
+    print(f"Best validation top-1 accuracy: {result.best_val_top1_acc:.2f}%")
+    print(f"Best validation top-5 accuracy: {result.best_val_top5_acc:.2f}%")
     print(f"Best validation loss: {result.best_val_loss:.4f}")
 
 

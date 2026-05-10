@@ -16,7 +16,8 @@ from .model import ResNetClassifier, create_model
 @dataclass
 class TrainingResult:
     best_val_loss: float
-    best_val_acc: float
+    best_val_top1_acc: float
+    best_val_top5_acc: float
     history: list[dict[str, float]]
     model: ResNetClassifier
 
@@ -92,17 +93,37 @@ def move_to_device(data: torch.Tensor | tuple[torch.Tensor, ...] | list[torch.Te
     return data.to(device, non_blocking=True)
 
 
+def topk_accuracy(outputs: torch.Tensor, labels: torch.Tensor, k: int) -> float:
+    k = min(k, outputs.size(1))
+    _, topk_preds = torch.topk(outputs, k=k, dim=1)
+    correct = topk_preds.eq(labels.view(-1, 1)).any(dim=1)
+    return correct.float().mean().item() * 100.0
+
+
 @torch.no_grad()
 def evaluate_model(model: ResNetClassifier, dataloader: DataLoader, amp_enabled: bool) -> dict[str, float]:
     model.eval()
     outputs: list[dict[str, torch.Tensor]] = []
+    top1_scores: list[float] = []
+    top5_scores: list[float] = []
     for batch in dataloader:
+        images, labels = batch
         if amp_enabled:
             with torch.autocast(device_type="cuda", dtype=torch.float16):
-                outputs.append(model.validating(batch))
+                validation_output = model.validating((images, labels))
+                logits = model(images)
         else:
-            outputs.append(model.validating(batch))
-    return model.validating_epoch_final(outputs)
+            validation_output = model.validating((images, labels))
+            logits = model(images)
+        outputs.append(validation_output)
+        top1_scores.append(topk_accuracy(logits, labels, k=1))
+        top5_scores.append(topk_accuracy(logits, labels, k=5))
+
+    result = model.validating_epoch_final(outputs)
+    result["Validation Top-1 Accuracy"] = sum(top1_scores) / max(len(top1_scores), 1)
+    result["Validation Top-5 Accuracy"] = sum(top5_scores) / max(len(top5_scores), 1)
+    result["Validation Accuracy"] = result["Validation Top-1 Accuracy"]
+    return result
 
 
 def train_model(
@@ -125,7 +146,8 @@ def train_model(
     scaler = torch.amp.GradScaler("cuda", enabled=amp_enabled)
     early_stopping = EarlyStopping(patience=config.train.patience, verbose=True)
     history: list[dict[str, float]] = []
-    best_val_acc = 0.0
+    best_val_top1_acc = 0.0
+    best_val_top5_acc = 0.0
 
     config.artifacts.model_dir.mkdir(parents=True, exist_ok=True)
 
@@ -146,14 +168,19 @@ def train_model(
         validation_result = evaluate_model(model, _DeviceLoader(val_loader, device), amp_enabled)
         validation_result["Train Loss"] = torch.stack(train_loss).mean().item()
         history.append(validation_result)
-        best_val_acc = max(best_val_acc, validation_result["Validation Accuracy"])
+        best_val_top1_acc = max(best_val_top1_acc, validation_result["Validation Top-1 Accuracy"])
+        best_val_top5_acc = max(best_val_top5_acc, validation_result["Validation Top-5 Accuracy"])
 
         print(
-            "Epoch [{}], Training Loss: {:.4f}, Validation Loss: {:.4f}, Validation Accuracy: {:.4f}".format(
+            (
+                "Epoch [{}], Training Loss: {:.4f}, Validation Loss: {:.4f}, "
+                "Validation Top-1 Accuracy: {:.4f}, Validation Top-5 Accuracy: {:.4f}"
+            ).format(
                 epoch + 1,
                 validation_result["Train Loss"],
                 validation_result["Validation Loss"],
-                validation_result["Validation Accuracy"],
+                validation_result["Validation Top-1 Accuracy"],
+                validation_result["Validation Top-5 Accuracy"],
             )
         )
 
@@ -177,7 +204,8 @@ def train_model(
         "gpu_count": torch.cuda.device_count() if device.type == "cuda" else 0,
         "epochs_ran": len(history),
         "best_val_loss": early_stopping.best_loss,
-        "best_val_acc": best_val_acc,
+        "best_val_top1_acc": best_val_top1_acc,
+        "best_val_top5_acc": best_val_top5_acc,
     }
     (config.artifacts.model_dir / "training_summary.json").write_text(
         json.dumps(summary, indent=2), encoding="utf-8"
@@ -185,7 +213,8 @@ def train_model(
 
     return TrainingResult(
         best_val_loss=early_stopping.best_loss,
-        best_val_acc=best_val_acc,
+        best_val_top1_acc=best_val_top1_acc,
+        best_val_top5_acc=best_val_top5_acc,
         history=history,
         model=model,
     )

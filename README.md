@@ -10,6 +10,7 @@ This repository implements a TrashNet image-classification workflow using:
 - train/validation/test split of `60/20/20`
 - mixed precision training when CUDA is available
 - early stopping on validation loss
+- top-1 and top-5 accuracy tracking
 - DVC-managed data, training, and evaluation stages
 - Streamlit-based inference demo
 
@@ -116,6 +117,7 @@ During training, the project prints runtime diagnostics including:
 - AMP status
 
 If training falls back to CPU, the script prints a warning before the first epoch.
+Each epoch also reports validation top-1 and top-5 accuracy.
 
 ## Configuration
 
@@ -235,6 +237,13 @@ After training and evaluation, the main outputs are:
 - `artifacts/reports/accuracy_per_class.png`
 - `artifacts/reports/confusion_matrix.png`
 
+`metrics.json` includes:
+
+- `top1_accuracy`
+- `top5_accuracy`
+- `overall_accuracy`
+- per-class precision, recall, F1-score, and accuracy
+
 ## Platform Notes
 
 ### Windows
@@ -254,4 +263,3 @@ The notebook version is environment-aware and supports both Colab and Kaggle pat
 - early stopping, AMP, and training loop: [src/image_classification/training.py](C:/Users/PC/Downloads/Image-Classification/src/image_classification/training.py)
 - evaluation reports and metrics: [src/image_classification/evaluate.py](C:/Users/PC/Downloads/Image-Classification/src/image_classification/evaluate.py)
 - inference and demo app: [src/image_classification/inference.py](C:/Users/PC/Downloads/Image-Classification/src/image_classification/inference.py), [app/streamlit_app.py](C:/Users/PC/Downloads/Image-Classification/app/streamlit_app.py)
-
