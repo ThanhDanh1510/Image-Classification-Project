@@ -16,7 +16,7 @@ from torch.utils.data import DataLoader
 
 from .config import AppConfig
 from .model import create_model
-from .training import move_to_device, resolve_device
+from .training import move_to_device, resolve_device, topk_accuracy
 
 
 def _load_model(config: AppConfig, class_names: list[str]) -> torch.nn.Module:
@@ -40,6 +40,8 @@ def evaluate_model(config: AppConfig, dataloader: DataLoader, class_names: list[
 
     all_preds: list[int] = []
     all_labels: list[int] = []
+    top1_scores: list[float] = []
+    top5_scores: list[float] = []
 
     with torch.no_grad():
         for batch in dataloader:
@@ -48,6 +50,8 @@ def evaluate_model(config: AppConfig, dataloader: DataLoader, class_names: list[
             _, preds = torch.max(outputs, dim=1)
             all_preds.extend(preds.cpu().numpy().tolist())
             all_labels.extend(labels.cpu().numpy().tolist())
+            top1_scores.append(topk_accuracy(outputs, labels, k=1))
+            top5_scores.append(topk_accuracy(outputs, labels, k=5))
 
     per_class: dict[str, dict[str, float]] = {}
     accuracies: list[float] = []
@@ -64,6 +68,8 @@ def evaluate_model(config: AppConfig, dataloader: DataLoader, class_names: list[
         }
 
     metrics = {
+        "top1_accuracy": sum(top1_scores) / max(len(top1_scores), 1),
+        "top5_accuracy": sum(top5_scores) / max(len(top5_scores), 1),
         "overall_accuracy": accuracy_score(all_labels, all_preds) * 100,
         "per_class": per_class,
     }
