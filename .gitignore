@@ -11,4 +11,5 @@ data/processed/
 artifacts/
 
 !.gitkeep
-images/
+images
+train

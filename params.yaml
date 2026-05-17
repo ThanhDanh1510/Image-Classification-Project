@@ -5,6 +5,8 @@ data:
   download_dir: "data/external"
   raw_dir: "data/raw"
   processed_dir: "data/processed"
+  train_image_dir: "train/images"
+  train_csv: "train/train.csv"
   image_size: 224
   train_split: 0.6
   val_split: 0.2
@@ -14,7 +16,7 @@ data:
   num_workers: 4
 
 train:
-  architecture: "resnet50"
+  architecture: "efficientnet_b0"
   pretrained: true
   learning_rate: 0.00005
   epochs: 50
