@@ -13,6 +13,8 @@ class DataConfig:
     download_dir: Path
     raw_dir: Path
     processed_dir: Path
+    train_image_dir: Path
+    train_csv: Path
     image_size: int
     train_split: float
     val_split: float
@@ -68,6 +70,8 @@ def load_config(params_path: str | Path = "params.yaml") -> AppConfig:
             download_dir=_as_path(root, data["download_dir"]),
             raw_dir=_as_path(root, data["raw_dir"]),
             processed_dir=_as_path(root, data["processed_dir"]),
+            train_image_dir=_as_path(root, data["train_image_dir"]),
+            train_csv=_as_path(root, data["train_csv"]),
             image_size=int(data["image_size"]),
             train_split=float(data["train_split"]),
             val_split=float(data["val_split"]),

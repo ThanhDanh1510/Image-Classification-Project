@@ -10,7 +10,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 
 from .config import AppConfig
-from .model import ResNetClassifier, create_model
+from .model import ImageClassifier, create_model
 
 
 @dataclass
@@ -19,7 +19,7 @@ class TrainingResult:
     best_val_top1_acc: float
     best_val_top5_acc: float
     history: list[dict[str, float]]
-    model: ResNetClassifier
+    model: ImageClassifier
 
 
 class EarlyStopping:
@@ -101,7 +101,7 @@ def topk_accuracy(outputs: torch.Tensor, labels: torch.Tensor, k: int) -> float:
 
 
 @torch.no_grad()
-def evaluate_model(model: ResNetClassifier, dataloader: DataLoader, amp_enabled: bool) -> dict[str, float]:
+def evaluate_model(model: ImageClassifier, dataloader: DataLoader, amp_enabled: bool) -> dict[str, float]:
     model.eval()
     outputs: list[dict[str, torch.Tensor]] = []
     top1_scores: list[float] = []
@@ -136,6 +136,7 @@ def train_model(
     amp_enabled = config.train.amp and device.type == "cuda"
     print_runtime_diagnostics(config, device, amp_enabled)
     model = create_model(
+        architecture=config.train.architecture,
         num_classes=len(class_names),
         pretrained=config.train.pretrained,
         multi_gpu=config.train.multi_gpu,

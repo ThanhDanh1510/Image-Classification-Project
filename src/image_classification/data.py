@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import multiprocessing
 import os
 import random
@@ -12,7 +13,8 @@ from urllib.parse import urlparse
 import numpy as np
 import requests
 import torch
-from torch.utils.data import DataLoader, Subset
+from PIL import Image
+from torch.utils.data import DataLoader, Dataset, Subset
 from torchvision import datasets, transforms
 
 from .config import AppConfig
@@ -20,14 +22,51 @@ from .config import AppConfig
 
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_STD = [0.229, 0.224, 0.225]
+COMPETITION_CLASSES = ["cardboard", "glass", "metal", "paper", "plastic", "trash"]
+
+
+class CompetitionTrainDataset(Dataset[tuple[torch.Tensor, int]]):
+    def __init__(
+        self,
+        image_dir: str | Path,
+        csv_path: str | Path,
+        transform: transforms.Compose | None = None,
+    ) -> None:
+        self.image_dir = Path(image_dir)
+        self.csv_path = Path(csv_path)
+        self.transform = transform
+        self.classes = COMPETITION_CLASSES.copy()
+        self.samples: list[tuple[Path, int]] = []
+
+        with self.csv_path.open("r", encoding="utf-8", newline="") as csv_file:
+            reader = csv.DictReader(csv_file)
+            for row in reader:
+                image_path = self.image_dir / row["file_name"]
+                category_id = int(row["category_id"])
+                if not 1 <= category_id <= len(self.classes):
+                    raise ValueError(f"Invalid category_id={category_id} for file {image_path.name}")
+                self.samples.append((image_path, category_id - 1))
+
+        if not self.samples:
+            raise ValueError(f"No training samples found in {self.csv_path}")
+
+    def __len__(self) -> int:
+        return len(self.samples)
+
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, int]:
+        image_path, label = self.samples[index]
+        image = Image.open(image_path).convert("RGB")
+        if self.transform is not None:
+            image = self.transform(image)
+        return image, label
 
 
 @dataclass(frozen=True)
 class DatasetBundle:
     classes: list[str]
-    base_dataset: datasets.ImageFolder
-    train_dataset: datasets.ImageFolder
-    eval_dataset: datasets.ImageFolder
+    base_dataset: Dataset[tuple[torch.Tensor, int]]
+    train_dataset: Dataset[tuple[torch.Tensor, int]]
+    eval_dataset: Dataset[tuple[torch.Tensor, int]]
     train_indices: list[int]
     val_indices: list[int]
     test_indices: list[int]
@@ -50,10 +89,15 @@ def set_seed(seed: int) -> None:
         torch.backends.cudnn.benchmark = True
 
 
+def _load_competition_dataset(config: AppConfig) -> tuple[Path, Path] | None:
+    if config.data.train_image_dir.exists() and config.data.train_csv.exists():
+        return config.data.train_image_dir, config.data.train_csv
+    return None
+
+
 def _load_tracked_dataset(config: AppConfig) -> Path | None:
-    processed_dir = config.data.processed_dir
-    if processed_dir.exists():
-        return processed_dir
+    if config.data.processed_dir.exists():
+        return config.data.processed_dir
     return None
 
 
@@ -90,11 +134,16 @@ def download_and_prepare_dataset(config: AppConfig) -> Path:
     return config.data.processed_dir
 
 
-def resolve_dataset_dir(config: AppConfig) -> Path:
-    tracked = _load_tracked_dataset(config)
-    if tracked is not None:
-        return tracked
-    return download_and_prepare_dataset(config)
+def resolve_dataset_source(config: AppConfig) -> tuple[str, Path | tuple[Path, Path]]:
+    competition_dataset = _load_competition_dataset(config)
+    if competition_dataset is not None:
+        return "competition_csv", competition_dataset
+
+    tracked_dataset = _load_tracked_dataset(config)
+    if tracked_dataset is not None:
+        return "imagefolder", tracked_dataset
+
+    return "imagefolder", download_and_prepare_dataset(config)
 
 
 def build_transforms(image_size: int) -> tuple[transforms.Compose, transforms.Compose]:
@@ -129,12 +178,21 @@ def _filtered_classes(dataset_dir: Path) -> list[str]:
 
 def build_dataset_bundle(config: AppConfig) -> DatasetBundle:
     set_seed(config.seed)
-    dataset_dir = resolve_dataset_dir(config)
+    source_type, source = resolve_dataset_source(config)
     train_transform, eval_transform = build_transforms(config.data.image_size)
 
-    base_dataset = datasets.ImageFolder(dataset_dir)
-    train_dataset = datasets.ImageFolder(dataset_dir, transform=train_transform)
-    eval_dataset = datasets.ImageFolder(dataset_dir, transform=eval_transform)
+    if source_type == "competition_csv":
+        image_dir, csv_path = source
+        base_dataset = CompetitionTrainDataset(image_dir, csv_path)
+        train_dataset = CompetitionTrainDataset(image_dir, csv_path, transform=train_transform)
+        eval_dataset = CompetitionTrainDataset(image_dir, csv_path, transform=eval_transform)
+        classes = base_dataset.classes
+    else:
+        dataset_dir = source
+        base_dataset = datasets.ImageFolder(dataset_dir)
+        train_dataset = datasets.ImageFolder(dataset_dir, transform=train_transform)
+        eval_dataset = datasets.ImageFolder(dataset_dir, transform=eval_transform)
+        classes = _filtered_classes(dataset_dir)
 
     total_samples = len(base_dataset)
     train_size = int(config.data.train_split * total_samples)
@@ -150,7 +208,6 @@ def build_dataset_bundle(config: AppConfig) -> DatasetBundle:
         generator=generator,
     )
 
-    classes = _filtered_classes(dataset_dir)
     return DatasetBundle(
         classes=classes,
         base_dataset=base_dataset,

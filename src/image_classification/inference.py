@@ -21,6 +21,7 @@ def load_model_artifacts(
     device = resolve_device(config.train.device)
     amp_enabled = config.train.amp and device.type == "cuda"
     model = create_model(
+        architecture=config.train.architecture,
         num_classes=len(class_names),
         pretrained=False,
         multi_gpu=False,
@@ -38,7 +39,7 @@ def predict_image(image: Image.Image, params_path: str | Path = "params.yaml") -
     tensor = eval_transform(image.convert("RGB")).unsqueeze(0).to(device)
 
     with torch.no_grad():
-        scores = model(tensor)[0].cpu().tolist()
+        scores = torch.softmax(model(tensor), dim=1)[0].cpu().tolist()
 
     ranked = sorted(zip(class_names, scores), key=lambda item: item[1], reverse=True)
     return ranked
